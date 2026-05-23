@@ -1,0 +1,1221 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Dr. Data — Multi-Agent Data Science Swarm</title>
+    <link href="https://cdn.jsdelivr.net/npm/tailwindcss@2.2.19/dist/tailwind.min.css" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap');
+        * { font-family: 'Inter', sans-serif; }
+        body { background: linear-gradient(135deg, #0f0c29 0%, #302b63 50%, #24243e 100%); min-height: 100vh; color: white; }
+        .glass { background: rgba(255,255,255,0.05); backdrop-filter: blur(16px); border: 1px solid rgba(255,255,255,0.1); }
+        .glass-card { background: rgba(255,255,255,0.07); backdrop-filter: blur(16px); border: 1px solid rgba(255,255,255,0.15); border-radius: 20px; transition: all 0.3s ease; }
+        .glass-card:hover { transform: translateY(-4px); border-color: rgba(102,126,234,0.5); box-shadow: 0 20px 40px rgba(0,0,0,0.3); }
+        .gradient-text { background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); -webkit-background-clip: text; -webkit-text-fill-color: transparent; }
+        .btn-primary { background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); transition: all 0.3s ease; border: none; }
+        .btn-primary:hover { transform: translateY(-2px); box-shadow: 0 10px 30px rgba(102,126,234,0.4); }
+        .btn-secondary { background: rgba(255,255,255,0.1); border: 1px solid rgba(255,255,255,0.2); transition: all 0.3s ease; }
+        .btn-secondary:hover { background: rgba(255,255,255,0.15); }
+        .chart-container { background: white; border-radius: 12px; padding: 16px; margin: 10px 0; }
+        .chat-message { max-width: 80%; padding: 12px 16px; border-radius: 16px; margin: 8px 0; }
+        .chat-user { background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); color: #000; margin-left: auto; }
+        .chat-user p { color: #000 !important; }
+        .chat-agent { background: rgba(255,255,255,0.1); color: #e2e8f0; margin-right: auto; border: 1px solid rgba(255,255,255,0.2); }
+
+        #chatInput { color: #000 !important; caret-color: #000 !important; }
+        #chatInput::placeholder { color: rgba(0,0,0,0.45) !important; }
+
+        select, input, textarea, option { color: #000 !important; }
+        select, input, textarea { background-color: #fff !important; }
+        option { background-color: #fff !important; color: #000 !important; }
+        input[type="range"] { filter: brightness(1.0); }
+
+        #chatInput:focus { outline: none; box-shadow: 0 0 0 2px rgba(102,126,234,0.35); }
+
+        .typing-indicator span { display: inline-block; width: 8px; height: 8px; background: #667eea; border-radius: 50%; animation: typing 1.4s infinite; margin: 0 2px; }
+        .typing-indicator span:nth-child(2) { animation-delay: 0.2s; }
+        .typing-indicator span:nth-child(3) { animation-delay: 0.4s; }
+        @keyframes typing { 0%, 60%, 100% { transform: translateY(0); } 30% { transform: translateY(-10px); } }
+        .sidebar-item { transition: all 0.2s; cursor: pointer; padding: 10px 16px; border-radius: 8px; }
+        .sidebar-item:hover { background: rgba(102,126,234,0.2); }
+        .sidebar-item.active { background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); }
+        .metric-card { background: rgba(255,255,255,0.05); border-radius: 12px; padding: 16px; text-align: center; border: 1px solid rgba(255,255,255,0.1); }
+        .metric-value { font-size: 2rem; font-weight: 700; color: #667eea; }
+        .metric-label { font-size: 0.875rem; color: #94a3b8; }
+        .progress-bar { height: 8px; border-radius: 4px; background: rgba(255,255,255,0.1); overflow: hidden; }
+        .progress-fill { height: 100%; border-radius: 4px; transition: width 0.5s ease; }
+        .health-good { background: linear-gradient(90deg, #10b981, #34d399); }
+        .health-moderate { background: linear-gradient(90deg, #f59e0b, #fbbf24); }
+        .health-poor { background: linear-gradient(90deg, #ef4444, #f87171); }
+        .tab-content { display: none; }
+        .tab-content.active { display: block; }
+        .scroll-hide::-webkit-scrollbar { display: none; }
+        .scroll-hide { -ms-overflow-style: none; scrollbar-width: none; }
+        .file-drop-zone { border: 2px dashed rgba(102,126,234,0.5); border-radius: 16px; padding: 40px; text-align: center; transition: all 0.3s; cursor: pointer; }
+        .file-drop-zone:hover, .file-drop-zone.dragover { border-color: #667eea; background: rgba(102,126,234,0.1); }
+        .insight-item { padding: 8px 12px; margin: 4px 0; background: rgba(102,126,234,0.1); border-radius: 8px; border-left: 3px solid #667eea; }
+        #loadingOverlay { position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.7); backdrop-filter: blur(5px); z-index: 9999; display: none; justify-content: center; align-items: center; flex-direction: column; }
+        .spinner { width: 60px; height: 60px; border: 4px solid rgba(102,126,234,0.3); border-top: 4px solid #667eea; border-radius: 50%; animation: spin 1s linear infinite; }
+        @keyframes spin { 0% { transform: rotate(0deg); } 100% { transform: rotate(360deg); } }
+        .agent-badge { display: inline-flex; align-items: center; gap: 6px; padding: 6px 14px; border-radius: 20px; font-size: 0.85rem; font-weight: 500; background: rgba(102,126,234,0.15); border: 1px solid rgba(102,126,234,0.3); }
+        
+        /* Hyperparameter panel styles */
+        .hp-section { border: 1px solid rgba(255,255,255,0.1); border-radius: 12px; overflow: hidden; margin-bottom: 8px; }
+        .hp-section-header { padding: 10px 14px; cursor: pointer; display: flex; justify-content: space-between; align-items: center; background: rgba(255,255,255,0.03); user-select: none; }
+        .hp-section-header:hover { background: rgba(255,255,255,0.06); }
+        .hp-section-body { padding: 12px 14px; border-top: 1px solid rgba(255,255,255,0.08); }
+        .hp-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
+        .hp-label { font-size: 0.75rem; color: #94a3b8; margin-bottom: 4px; display: block; }
+        .param-badge { font-size: 0.7rem; padding: 2px 6px; border-radius: 4px; background: rgba(102,126,234,0.15); color: #a5b4fc; }
+        .badge-pill { display: inline-block; padding: 2px 10px; border-radius: 12px; font-size: 0.7rem; font-weight: 500; }
+        
+        /* model type chip styles */
+        .model-chip { display: inline-flex; align-items: center; gap: 6px; padding: 6px 12px; border-radius: 20px; background: rgba(255,255,255,0.05); border: 1px solid rgba(255,255,255,0.12); cursor: pointer; transition: all 0.2s; font-size: 0.8rem; }
+        .model-chip:hover { background: rgba(102,126,234,0.15); border-color: rgba(102,126,234,0.3); }
+        .model-chip.active { background: rgba(102,126,234,0.25); border-color: #667eea; }
+        .model-chip i { font-size: 0.75rem; }
+        
+        /* Range input styling */
+        input[type="range"] { -webkit-appearance: none; appearance: none; height: 6px; background: rgba(102,126,234,0.3); border-radius: 3px; outline: none; width: 100%; }
+        input[type="range"]::-webkit-slider-thumb { -webkit-appearance: none; appearance: none; width: 18px; height: 18px; border-radius: 50%; background: #667eea; cursor: pointer; border: 2px solid white; box-shadow: 0 2px 6px rgba(0,0,0,0.3); }
+        
+        .toggle-switch { position: relative; width: 44px; height: 24px; display: inline-block; }
+        .toggle-switch input { opacity: 0; width: 0; height: 0; }
+        .toggle-slider { position: absolute; cursor: pointer; inset: 0; background: rgba(255,255,255,0.15); border-radius: 24px; transition: 0.3s; }
+        .toggle-slider::before { content: ''; position: absolute; height: 18px; width: 18px; left: 3px; bottom: 3px; background: white; border-radius: 50%; transition: 0.3s; }
+        .toggle-switch input:checked + .toggle-slider { background: #667eea; }
+        .toggle-switch input:checked + .toggle-slider::before { transform: translateX(20px); }
+    </style>
+</head>
+<body class="text-white">
+    <div id="loadingOverlay">
+        <div class="spinner mb-4"></div>
+        <p id="loadingText" class="text-lg font-semibold">Processing...</p>
+    </div>
+
+    <div class="flex h-screen overflow-hidden">
+        <aside class="w-64 glass flex flex-col" style="border-right: 1px solid rgba(255,255,255,0.1);">
+            <div class="p-6 border-b border-white/10">
+                <h1 class="text-2xl font-bold gradient-text">Dr. Data</h1>
+                <p class="text-xs text-gray-400 mt-1">Multi-Agent Data Science Swarm</p>
+            </div>
+            <nav class="flex-1 p-4 space-y-2">
+                <div class="sidebar-item active" onclick="switchTab('upload')">
+                    <i class="fas fa-upload mr-2"></i> Upload Data
+                </div>
+                <div class="sidebar-item" onclick="switchTab('overview')" id="nav-overview">
+                    <i class="fas fa-chart-pie mr-2"></i> Overview
+                </div>
+                <div class="sidebar-item" onclick="switchTab('eda')" id="nav-eda">
+                    <i class="fas fa-search mr-2"></i> EDA
+                </div>
+                <div class="sidebar-item" onclick="switchTab('preprocess')" id="nav-preprocess">
+                    <i class="fas fa-broom mr-2"></i> Preprocess
+                </div>
+                <div class="sidebar-item" onclick="switchTab('ml')" id="nav-ml">
+                    <i class="fas fa-brain mr-2"></i> Machine Learning
+                </div>
+                <div class="sidebar-item" onclick="switchTab('ann')" id="nav-ann">
+                    <i class="fas fa-network-wired mr-2"></i> Neural Network
+                </div>
+                <div class="sidebar-item" onclick="switchTab('clustering')" id="nav-clustering">
+                    <i class="fas fa-project-diagram mr-2"></i> Clustering
+                </div>
+                <div class="sidebar-item" onclick="switchTab('chat')" id="nav-chat">
+                    <i class="fas fa-comments mr-2"></i> Agent Chat
+                </div>
+            </nav>
+            <div class="p-4 border-t border-white/10">
+                <div class="text-xs text-gray-400">
+                    <p class="mb-1"><i class="fas fa-microchip mr-1"></i> <span class="font-semibold text-white">LLM Settings</span></p>
+                    <div class="mb-2">
+                        <label class="text-2xs" style="font-size:0.6rem;">Model Path (GGUF)</label>
+                        <input type="text" id="modelPathInput" value="D:\models\Qwen3.5-2B-Q4_K_S.gguf" 
+                               class="w-full rounded px-2 py-1 mt-0.5 text-xs" 
+                               style="background: rgba(255,255,255,0.15); color: #fff; border: 1px solid rgba(255,255,255,0.15);">
+                    </div>
+                    <div class="flex gap-1 mb-1">
+                        <select id="quickModelSelect" class="flex-1 rounded px-2 py-1 text-xs" 
+                                style="background: rgba(255,255,255,0.15); color: #fff; border: 1px solid rgba(255,255,255,0.15);"
+                                onchange="document.getElementById('modelPathInput').value = this.value;">
+                            <option value="D:\models\Qwen3.5-2B-Q4_K_S.gguf" style="background:#302b63;color:white;">Qwen 2B (Current)</option>
+                            <option value="D:\models\gemma-3-270m-it" style="background:#302b63;color:white;">Gemma 3 270M</option>
+                            <option value="" style="background:#302b63;color:white;">Auto-download if missing</option>
+                        </select>
+                    </div>
+                    <p><i class="fas fa-server mr-1"></i> Status: <span class="text-green-400">Online</span></p>
+                </div>
+            </div>
+        </aside>
+
+        <main class="flex-1 overflow-y-auto scroll-hide p-6">
+            <!-- ===== TAB: UPLOAD ===== -->
+            <div id="tab-upload" class="tab-content active">
+                <div class="max-w-2xl mx-auto">
+                    <div class="text-center mb-8">
+                        <h2 class="text-3xl font-bold mb-2">Upload Dataset</h2>
+                        <p class="text-gray-400">Drop a CSV or Excel file to begin multi-agent analysis</p>
+                    </div>
+                    <div class="file-drop-zone" id="dropZone">
+                        <i class="fas fa-cloud-upload-alt text-5xl text-gray-400 mb-4"></i>
+                        <p class="text-lg mb-2">Drag & drop or click to select</p>
+                        <p class="text-sm text-gray-500">Supported: CSV, XLSX, XLS, Parquet, JSON</p>
+                        <input type="file" id="fileInput" accept=".csv,.xlsx,.xls,.parquet,.json" class="hidden" onchange="handleFileSelect(event)">
+                    </div>
+                    <div id="uploadStatus" class="mt-6 hidden">
+                        <div class="glass-card p-6">
+                            <div class="flex items-center justify-between mb-4">
+                                <h3 class="font-bold text-lg">File Information</h3>
+                                <span id="fileName" class="text-sm text-gray-400"></span>
+                            </div>
+                            <div class="grid grid-cols-4 gap-4" id="fileMetrics"></div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- ===== TAB: OVERVIEW ===== -->
+            <div id="tab-overview" class="tab-content">
+                <h2 class="text-2xl font-bold mb-6">Dataset Overview</h2>
+                <div id="overviewContent">
+                    <div class="text-center text-gray-400 py-20">
+                        <i class="fas fa-database text-5xl mb-4"></i>
+                        <p>Upload a dataset to see the overview</p>
+                    </div>
+                </div>
+            </div>
+
+            <!-- ===== TAB: EDA ===== -->
+            <div id="tab-eda" class="tab-content">
+                <div class="flex justify-between items-center mb-6">
+                    <h2 class="text-2xl font-bold">Exploratory Data Analysis</h2>
+                    <button onclick="runEDA()" class="btn-primary px-6 py-2 rounded-lg font-semibold">
+                        <i class="fas fa-play mr-2"></i> Run EDA
+                    </button>
+                </div>
+                <div id="edaContent">
+                    <div class="text-center text-gray-400 py-20">
+                        <i class="fas fa-chart-bar text-5xl mb-4"></i>
+                        <p>Upload data and run EDA to generate insights</p>
+                    </div>
+                </div>
+            </div>
+
+            <!-- ===== TAB: PREPROCESS ===== -->
+            <div id="tab-preprocess" class="tab-content">
+                <h2 class="text-2xl font-bold mb-6">Data Preprocessing</h2>
+                <div class="grid grid-cols-2 gap-6 mb-6">
+                    <div class="glass-card p-6">
+                        <h3 class="font-bold mb-4">Preprocessing Settings</h3>
+                        <div class="space-y-4">
+                            <div>
+                                <label class="block text-sm text-gray-400 mb-1">Missing Values</label>
+                                <select id="missingStrategy" class="w-full bg-white rounded-lg px-3 py-2 text-black border border-white/20">
+                                    <option value="auto">Auto (Recommended)</option>
+                                    <option value="drop">Drop Rows</option>
+                                    <option value="mean">Mean</option>
+                                    <option value="median">Median</option>
+                                    <option value="mode">Mode</option>
+                                    <option value="knn">KNN Imputer</option>
+                                </select>
+                            </div>
+                            <div>
+                                <label class="block text-sm text-gray-400 mb-1">Outliers</label>
+                                <select id="outlierStrategy" class="w-full bg-white rounded-lg px-3 py-2 text-black border border-white/20">
+                                    <option value="none">No Change</option>
+                                    <option value="iqr">IQR Method</option>
+                                    <option value="zscore">Z-Score Method</option>
+                                </select>
+                            </div>
+                            <div>
+                                <label class="block text-sm text-gray-400 mb-1">Categorical Encoding</label>
+                                <select id="encodingStrategy" class="w-full bg-white rounded-lg px-3 py-2 text-black border border-white/20">
+                                    <option value="auto">Auto (Recommended)</option>
+                                    <option value="label">Label Encoding</option>
+                                    <option value="onehot">One-Hot Encoding</option>
+                                    <option value="none">No Change</option>
+                                </select>
+                            </div>
+                            <div>
+                                <label class="block text-sm text-gray-400 mb-1">Scaling</label>
+                                <select id="scaleStrategy" class="w-full bg-white rounded-lg px-3 py-2 text-black border border-white/20">
+                                    <option value="standard">StandardScaler</option>
+                                    <option value="minmax">MinMaxScaler</option>
+                                    <option value="robust">RobustScaler</option>
+                                    <option value="none">No Change</option>
+                                </select>
+                            </div>
+                        </div>
+                        <button onclick="runPreprocess()" class="btn-primary w-full mt-6 py-3 rounded-lg font-semibold">
+                            <i class="fas fa-cogs mr-2"></i> Run Preprocessing
+                        </button>
+                    </div>
+                    <div id="preprocessResult" class="glass-card p-6">
+                        <h3 class="font-bold mb-4">Results</h3>
+                        <p class="text-gray-400">Results will appear here after execution</p>
+                    </div>
+                </div>
+            </div>
+
+            <!-- ===== TAB: MACHINE LEARNING ===== -->
+            <div id="tab-ml" class="tab-content">
+                <div class="flex justify-between items-center mb-4">
+                    <h2 class="text-2xl font-bold">Machine Learning</h2>
+                    <button onclick="trainMLModel()" class="btn-primary px-6 py-2 rounded-lg font-semibold">
+                        <i class="fas fa-play mr-2"></i> Train Models
+                    </button>
+                </div>
+                
+                <div class="grid grid-cols-1 xl:grid-cols-4 gap-6 mb-6">
+                    <!-- Left Column: Model Selection & Basic Settings -->
+                    <div class="xl:col-span-1 space-y-6">
+                        <!-- Target & Settings -->
+                        <div class="glass-card p-5">
+                            <h3 class="font-bold mb-3 flex items-center gap-2">
+                                <i class="fas fa-bullseye text-purple-400"></i> Target & Settings
+                            </h3>
+                            <div class="space-y-3">
+                                <div>
+                                    <select id="targetColumn" class="w-full bg-white rounded-lg px-3 py-2 text-black border border-white/20">
+                                        <option value="">Select target...</option>
+                                    </select>
+                                </div>
+                                <div>
+                                    <label class="text-sm text-gray-400">Problem Type</label>
+                                    <select id="problemType" class="w-full bg-white rounded-lg px-3 py-2 mt-1 text-black border border-white/20">
+                                        <option value="auto">Auto-detect</option>
+                                        <option value="regression">Regression</option>
+                                        <option value="classification">Classification</option>
+                                    </select>
+                                </div>
+                                <div>
+                                    <label class="text-sm text-gray-400">Test Size: <span id="testSizeVal" class="font-mono text-purple-400">0.20</span></label>
+                                    <input type="range" id="testSize" min="0.1" max="0.4" step="0.05" value="0.2" class="w-full mt-1" oninput="document.getElementById('testSizeVal').textContent = this.value">
+                                </div>
+                                <div>
+                                    <label class="text-sm text-gray-400">CV Folds</label>
+                                    <select id="cvFolds" class="w-full bg-white rounded-lg px-3 py-2 mt-1 text-black border border-white/20">
+                                        <option value="3">3-Fold</option>
+                                        <option value="5" selected>5-Fold</option>
+                                        <option value="10">10-Fold</option>
+                                    </select>
+                                </div>
+                            </div>
+                        </div>
+                        
+                        <!-- Model Selection -->
+                        <div class="glass-card p-5">
+                            <h3 class="font-bold mb-3 flex items-center gap-2">
+                                <i class="fas fa-robot text-green-400"></i> Model Selection
+                            </h3>
+                            <div class="flex flex-wrap gap-2 mb-3">
+                                <span class="model-chip active" data-value="all" onclick="selectModelChip(this)"><i class="fas fa-layer-group"></i> All</span>
+                                <span class="model-chip" data-value="linear" onclick="selectModelChip(this)"><i class="fas fa-chart-line"></i> Linear</span>
+                                <span class="model-chip" data-value="random_forest" onclick="selectModelChip(this)"><i class="fas fa-tree"></i> RF</span>
+                                <span class="model-chip" data-value="xgboost" onclick="selectModelChip(this)"><i class="fas fa-bolt"></i> XGBoost</span>
+                                <span class="model-chip" data-value="lightgbm" onclick="selectModelChip(this)"><i class="fas fa-zap"></i> LightGBM</span>
+                                <span class="model-chip" data-value="catboost" onclick="selectModelChip(this)"><i class="fas fa-cat"></i> CatBoost</span>
+                                <span class="model-chip" data-value="svm" onclick="selectModelChip(this)"><i class="fas fa-circle"></i> SVM</span>
+                                <span class="model-chip" data-value="knn" onclick="selectModelChip(this)"><i class="fas fa-users"></i> KNN</span>
+                                <span class="model-chip" data-value="extra_trees" onclick="selectModelChip(this)"><i class="fas fa-tree"></i> Extra</span>
+                                <span class="model-chip" data-value="adaboost" onclick="selectModelChip(this)"><i class="fas fa-chart-bar"></i> AdaBoost</span>
+                                <span class="model-chip" data-value="decision_tree" onclick="selectModelChip(this)"><i class="fas fa-code-branch"></i> Tree</span>
+                                <span class="model-chip" data-value="mlp" onclick="selectModelChip(this)"><i class="fas fa-network-wired"></i> MLP</span>
+                                <span class="model-chip" data-value="naive_bayes" onclick="selectModelChip(this)"><i class="fas fa-calculator"></i> NaiveBayes</span>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <!-- Right Area: Hyperparameters + Results -->
+                    <div class="xl:col-span-3 space-y-6">
+                        <!-- Hyperparameters Section -->
+                        <div class="glass-card p-5">
+                            <h3 class="font-bold mb-3 flex items-center gap-2">
+                                <i class="fas fa-sliders-h text-yellow-400"></i> Hyperparameters
+                                <span class="text-xs text-gray-500 font-normal ml-2">— Click sections to expand</span>
+                            </h3>
+
+                            <!-- General / Shared -->
+                            <div class="hp-section">
+                                <div class="hp-section-header" onclick="toggleHPSection(this)">
+                                    <span class="font-semibold text-sm flex items-center gap-2"><i class="fas fa-cogs text-blue-400"></i> General</span>
+                                    <i class="fas fa-chevron-down text-xs text-gray-500"></i>
+                                </div>
+                                <div class="hp-section-body">
+                                    <div class="hp-grid">
+                                        <div>
+                                            <label class="hp-label">N estimators</label>
+                                            <input type="number" id="hp_n_estimators" value="200" min="10" max="2000" step="10" class="w-full rounded px-3 py-1.5 text-sm bg-white text-black border border-white/20">
+                                        </div>
+                                        <div>
+                                            <label class="hp-label">Max depth</label>
+                                            <input type="number" id="hp_max_depth" value="20" min="1" max="200" class="w-full rounded px-3 py-1.5 text-sm bg-white text-black border border-white/20">
+                                        </div>
+                                        <div>
+                                            <label class="hp-label">Min samples split</label>
+                                            <input type="number" id="hp_min_samples_split" value="2" min="2" max="100" class="w-full rounded px-3 py-1.5 text-sm bg-white text-black border border-white/20">
+                                        </div>
+                                        <div>
+                                            <label class="hp-label">Min samples leaf</label>
+                                            <input type="number" id="hp_min_samples_leaf" value="1" min="1" max="100" class="w-full rounded px-3 py-1.5 text-sm bg-white text-black border border-white/20">
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+
+                            <!-- SVM -->
+                            <div class="hp-section">
+                                <div class="hp-section-header" onclick="toggleHPSection(this)">
+                                    <span class="font-semibold text-sm flex items-center gap-2"><i class="fas fa-circle text-green-400"></i> SVM</span>
+                                    <i class="fas fa-chevron-down text-xs text-gray-500"></i>
+                                </div>
+                                <div class="hp-section-body">
+                                    <div class="hp-grid">
+                                        <div>
+                                            <label class="hp-label">Kernel</label>
+                                            <select id="hp_svm_kernel" class="w-full rounded px-3 py-1.5 text-sm bg-white text-black border border-white/20">
+                                                <option value="rbf">RBF</option>
+                                                <option value="linear">Linear</option>
+                                                <option value="poly">Poly</option>
+                                                <option value="sigmoid">Sigmoid</option>
+                                            </select>
+                                        </div>
+                                        <div>
+                                            <label class="hp-label">C (regularization)</label>
+                                            <input type="number" id="hp_svm_c" value="1.0" min="0.01" max="1000" step="0.1" class="w-full rounded px-3 py-1.5 text-sm bg-white text-black border border-white/20">
+                                        </div>
+                                        <div>
+                                            <label class="hp-label">Gamma</label>
+                                            <select id="hp_svm_gamma" class="w-full rounded px-3 py-1.5 text-sm bg-white text-black border border-white/20">
+                                                <option value="scale">Scale (auto)</option>
+                                                <option value="auto">Auto</option>
+                                            </select>
+                                        </div>
+                                        <div></div>
+                                    </div>
+                                </div>
+                            </div>
+
+                            <!-- KNN -->
+                            <div class="hp-section">
+                                <div class="hp-section-header" onclick="toggleHPSection(this)">
+                                    <span class="font-semibold text-sm flex items-center gap-2"><i class="fas fa-users text-yellow-400"></i> KNN</span>
+                                    <i class="fas fa-chevron-down text-xs text-gray-500"></i>
+                                </div>
+                                <div class="hp-section-body">
+                                    <div class="hp-grid">
+                                        <div>
+                                            <label class="hp-label">N neighbors</label>
+                                            <input type="number" id="hp_knn_neighbors" value="5" min="1" max="100" class="w-full rounded px-3 py-1.5 text-sm bg-white text-black border border-white/20">
+                                        </div>
+                                        <div>
+                                            <label class="hp-label">Weights</label>
+                                            <select id="hp_knn_weights" class="w-full rounded px-3 py-1.5 text-sm bg-white text-black border border-white/20">
+                                                <option value="uniform">Uniform</option>
+                                                <option value="distance">Distance</option>
+                                            </select>
+                                        </div>
+                                        <div>
+                                            <label class="hp-label">Metric</label>
+                                            <select id="hp_knn_metric" class="w-full rounded px-3 py-1.5 text-sm bg-white text-black border border-white/20">
+                                                <option value="minkowski">Minkowski</option>
+                                                <option value="euclidean">Euclidean</option>
+                                                <option value="manhattan">Manhattan</option>
+                                                <option value="cosine">Cosine</option>
+                                            </select>
+                                        </div>
+                                        <div></div>
+                                    </div>
+                                </div>
+                            </div>
+
+                            <!-- XGBoost -->
+                            <div class="hp-section">
+                                <div class="hp-section-header" onclick="toggleHPSection(this)">
+                                    <span class="font-semibold text-sm flex items-center gap-2"><i class="fas fa-bolt text-orange-400"></i> XGBoost</span>
+                                    <i class="fas fa-chevron-down text-xs text-gray-500"></i>
+                                </div>
+                                <div class="hp-section-body">
+                                    <div class="hp-grid">
+                                        <div>
+                                            <label class="hp-label">Learning rate</label>
+                                            <input type="number" id="hp_xgb_lr" value="0.1" min="0.001" max="1.0" step="0.01" class="w-full rounded px-3 py-1.5 text-sm bg-white text-black border border-white/20">
+                                        </div>
+                                        <div>
+                                            <label class="hp-label">Max depth</label>
+                                            <input type="number" id="hp_xgb_max_depth" value="6" min="1" max="50" class="w-full rounded px-3 py-1.5 text-sm bg-white text-black border border-white/20">
+                                        </div>
+                                        <div>
+                                            <label class="hp-label">Subsample</label>
+                                            <input type="number" id="hp_xgb_subsample" value="0.8" min="0.1" max="1.0" step="0.05" class="w-full rounded px-3 py-1.5 text-sm bg-white text-black border border-white/20">
+                                        </div>
+                                        <div>
+                                            <label class="hp-label">Colsample bytree</label>
+                                            <input type="number" id="hp_xgb_colsample" value="0.8" min="0.1" max="1.0" step="0.05" class="w-full rounded px-3 py-1.5 text-sm bg-white text-black border border-white/20">
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+
+                            <!-- LightGBM -->
+                            <div class="hp-section">
+                                <div class="hp-section-header" onclick="toggleHPSection(this)">
+                                    <span class="font-semibold text-sm flex items-center gap-2"><i class="fas fa-zap text-blue-400"></i> LightGBM</span>
+                                    <i class="fas fa-chevron-down text-xs text-gray-500"></i>
+                                </div>
+                                <div class="hp-section-body">
+                                    <div class="hp-grid">
+                                        <div>
+                                            <label class="hp-label">Num leaves</label>
+                                            <input type="number" id="hp_lgb_num_leaves" value="31" min="2" max="200" class="w-full rounded px-3 py-1.5 text-sm bg-white text-black border border-white/20">
+                                        </div>
+                                        <div>
+                                            <label class="hp-label">Learning rate</label>
+                                            <input type="number" id="hp_lgb_lr" value="0.1" min="0.001" max="1.0" step="0.01" class="w-full rounded px-3 py-1.5 text-sm bg-white text-black border border-white/20">
+                                        </div>
+                                        <div>
+                                            <label class="hp-label">Feature fraction</label>
+                                            <input type="number" id="hp_lgb_feature_fraction" value="0.9" min="0.1" max="1.0" step="0.05" class="w-full rounded px-3 py-1.5 text-sm bg-white text-black border border-white/20">
+                                        </div>
+                                        <div></div>
+                                    </div>
+                                </div>
+                            </div>
+
+                            <!-- Ridge / Lasso -->
+                            <div class="hp-section">
+                                <div class="hp-section-header" onclick="toggleHPSection(this)">
+                                    <span class="font-semibold text-sm flex items-center gap-2"><i class="fas fa-arrow-right text-red-400"></i> Ridge / Lasso / Logistic</span>
+                                    <i class="fas fa-chevron-down text-xs text-gray-500"></i>
+                                </div>
+                                <div class="hp-section-body">
+                                    <div class="hp-grid">
+                                        <div>
+                                            <label class="hp-label">Ridge alpha</label>
+                                            <input type="number" id="hp_ridge_alpha" value="1.0" min="0.001" max="100" step="0.1" class="w-full rounded px-3 py-1.5 text-sm bg-white text-black border border-white/20">
+                                        </div>
+                                        <div>
+                                            <label class="hp-label">Lasso alpha</label>
+                                            <input type="number" id="hp_lasso_alpha" value="0.1" min="0.001" max="100" step="0.01" class="w-full rounded px-3 py-1.5 text-sm bg-white text-black border border-white/20">
+                                        </div>
+                                        <div>
+                                            <label class="hp-label">Logistic penalty</label>
+                                            <select id="hp_logistic_penalty" class="w-full rounded px-3 py-1.5 text-sm bg-white text-black border border-white/20">
+                                                <option value="l2">L2</option>
+                                                <option value="l1">L1</option>
+                                                <option value="elasticnet">ElasticNet</option>
+                                                <option value="none">None</option>
+                                            </select>
+                                        </div>
+                                        <div>
+                                            <label class="hp-label">Logistic C</label>
+                                            <input type="number" id="hp_logistic_c" value="1.0" min="0.001" max="1000" step="0.1" class="w-full rounded px-3 py-1.5 text-sm bg-white text-black border border-white/20">
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+
+                            <div class="text-xs text-gray-500 mt-2 italic">
+                                <i class="fas fa-info-circle mr-1"></i> Hover over section headers to expand/collapse. Changes apply on next training.
+                            </div>
+                        </div>
+
+                        <!-- Results Section -->
+                        <div class="grid grid-cols-1 gap-6">
+                            <div id="mlScores" class="glass-card p-5">
+                                <h3 class="font-bold mb-3 flex items-center gap-2">
+                                    <i class="fas fa-chart-bar text-green-400"></i> Model Results
+                                </h3>
+                                <p class="text-gray-400 text-sm">Model evaluation results will appear here after training.</p>
+                            </div>
+                            <div id="mlCharts"></div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- ===== TAB: NEURAL NETWORK (Enhanced) ===== -->
+            <div id="tab-ann" class="tab-content">
+                <div class="flex justify-between items-center mb-4 flex-wrap gap-3">
+                    <div>
+                        <h2 class="text-2xl font-bold">
+                            <span style="background: linear-gradient(135deg, #a855f7, #6366f1); -webkit-background-clip: text; -webkit-text-fill-color: transparent;">
+                                <i class="fas fa-brain mr-2"></i> Neural Network
+                            </span>
+                        </h2>
+                        <p class="text-sm text-gray-500 mt-1">Deep Learning with Keras/TensorFlow — full architecture control</p>
+                    </div>
+                    <button onclick="trainANN()" class="btn-primary px-6 py-2.5 rounded-lg font-semibold flex items-center gap-2"
+                            style="background: linear-gradient(135deg, #7c3aed, #6366f1); box-shadow: 0 4px 20px rgba(124,58,237,0.3);">
+                        <i class="fas fa-brain"></i> Train ANN
+                    </button>
+                </div>
+                
+                <div class="grid grid-cols-1 xl:grid-cols-3 gap-6 mb-6">
+                    <!-- Left Column: Settings & Architecture -->
+                    <div class="xl:col-span-1 space-y-6">
+                        <!-- Target & Basic Settings -->
+                        <div class="glass-card p-5" style="border-color: rgba(124,58,237,0.25);">
+                            <h3 class="font-bold mb-3 flex items-center gap-2 text-purple-300">
+                                <i class="fas fa-cog"></i> Basic Settings
+                            </h3>
+                            <div class="space-y-3">
+                                <div>
+                                    <label class="text-xs text-gray-500 block mb-1">Target Column</label>
+                                    <select id="annTargetColumn" class="w-full rounded-lg px-3 py-2 text-sm" 
+                                            style="background: rgba(255,255,255,0.08); color: #e2e8f0; border: 1px solid rgba(255,255,255,0.12);">
+                                        <option value="" style="background:#1e1b4b;color:white;">Select target...</option>
+                                    </select>
+                                </div>
+                                <div class="grid grid-cols-2 gap-3">
+                                    <div>
+                                        <label class="text-xs text-gray-500 block mb-1">Problem Type</label>
+                                        <select id="annProblemType" class="w-full rounded-lg px-2 py-1.5 text-xs"
+                                                style="background: rgba(255,255,255,0.08); color: #e2e8f0; border: 1px solid rgba(255,255,255,0.12);">
+                                            <option value="auto" style="background:#1e1b4b;color:white;">Auto</option>
+                                            <option value="regression" style="background:#1e1b4b;color:white;">Regression</option>
+                                            <option value="classification" style="background:#1e1b4b;color:white;">Classification</option>
+                                        </select>
+                                    </div>
+                                    <div>
+                                        <label class="text-xs text-gray-500 block mb-1">Test Size</label>
+                                        <div class="flex items-center gap-2">
+                                            <input type="range" id="annTestSize" min="0.1" max="0.4" step="0.05" value="0.2" 
+                                                   class="flex-1" style="accent-color:#a855f7;"
+                                                   oninput="document.getElementById('annTestSizeVal').textContent = this.value;">
+                                            <span id="annTestSizeVal" class="text-sm font-mono text-purple-400 min-w-[2.5rem] text-right">0.20</span>
+                                        </div>
+                                    </div>
+                                </div>
+                                
+                                <div class="border-t border-white/5 pt-3">
+                                    <p class="text-xs text-gray-500 font-semibold mb-2">Training Config</p>
+                                    <div class="grid grid-cols-2 gap-3">
+                                        <div>
+                                            <label class="text-xs text-gray-500 block mb-1">Epochs</label>
+                                            <input type="number" id="annEpochs" value="100" min="10" max="1000" step="10" 
+                                                   class="w-full rounded-lg px-2 py-1.5 text-xs"
+                                                   style="background: rgba(255,255,255,0.08); color: #e2e8f0; border: 1px solid rgba(255,255,255,0.12);">
+                                        </div>
+                                        <div>
+                                            <label class="text-xs text-gray-500 block mb-1">Batch Size</label>
+                                            <select id="annBatchSize" class="w-full rounded-lg px-2 py-1.5 text-xs"
+                                                    style="background: rgba(255,255,255,0.08); color: #e2e8f0; border: 1px solid rgba(255,255,255,0.12);">
+                                                <option value="16" style="background:#1e1b4b;color:white;">16</option>
+                                                <option value="32" selected style="background:#1e1b4b;color:white;">32</option>
+                                                <option value="64" style="background:#1e1b4b;color:white;">64</option>
+                                                <option value="128" style="background:#1e1b4b;color:white;">128</option>
+                                            </select>
+                                        </div>
+                                        <div>
+                                            <label class="text-xs text-gray-500 block mb-1">Learning Rate</label>
+                                            <input type="number" id="annLearningRate" value="0.001" min="0.0001" max="0.1" step="0.0001" 
+                                                   class="w-full rounded-lg px-2 py-1.5 text-xs"
+                                                   style="background: rgba(255,255,255,0.08); color: #e2e8f0; border: 1px solid rgba(255,255,255,0.12);">
+                                        </div>
+                                        <div>
+                                            <label class="text-xs text-gray-500 block mb-1">Optimizer</label>
+                                            <select id="annOptimizer" class="w-full rounded-lg px-2 py-1.5 text-xs"
+                                                    style="background: rgba(255,255,255,0.08); color: #e2e8f0; border: 1px solid rgba(255,255,255,0.12);">
+                                                <option value="adamw" selected style="background:#1e1b4b;color:white;">AdamW</option>
+                                                <option value="adam" style="background:#1e1b4b;color:white;">Adam</option>
+                                                <option value="rmsprop" style="background:#1e1b4b;color:white;">RMSprop</option>
+                                                <option value="sgd" style="background:#1e1b4b;color:white;">SGD</option>
+                                            </select>
+                                        </div>
+                                    </div>
+                                </div>
+                                
+                                <div class="border-t border-white/5 pt-3">
+                                    <p class="text-xs text-gray-500 font-semibold mb-2">Regularization</p>
+                                    <div class="grid grid-cols-2 gap-3">
+                                        <div class="flex items-center justify-between">
+                                            <label class="text-xs text-gray-500">Batch Norm</label>
+                                            <label class="toggle-switch">
+                                                <input type="checkbox" id="annBatchNorm" checked>
+                                                <span class="toggle-slider"></span>
+                                            </label>
+                                        </div>
+                                        <div>
+                                            <label class="text-xs text-gray-500 block mb-1">L2 Lambda</label>
+                                            <input type="number" id="annL2Reg" value="0.001" min="0" max="0.1" step="0.0001" 
+                                                   class="w-full rounded-lg px-2 py-1.5 text-xs"
+                                                   style="background: rgba(255,255,255,0.08); color: #e2e8f0; border: 1px solid rgba(255,255,255,0.12);">
+                                        </div>
+                                        <div>
+                                            <label class="text-xs text-gray-500 block mb-1">Early Stop Patience</label>
+                                            <input type="number" id="annEarlyStopPatience" value="20" min="5" max="200" 
+                                                   class="w-full rounded-lg px-2 py-1.5 text-xs"
+                                                   style="background: rgba(255,255,255,0.08); color: #e2e8f0; border: 1px solid rgba(255,255,255,0.12);">
+                                        </div>
+                                        <div></div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                        
+                        <!-- Architecture Config (from ann_config.js) -->
+                        <div class="glass-card p-4" style="border-color: rgba(99,102,241,0.2);">
+                            <div id="annConfigContainer"></div>
+                        </div>
+                    </div>
+                    
+                    <!-- Right Column: Results -->
+                    <div class="xl:col-span-2 space-y-6">
+                        <!-- Scores & Metrics -->
+                        <div id="annScores" class="glass-card p-5" style="border-color: rgba(124,58,237,0.2);">
+                            <h3 class="font-bold mb-3 flex items-center gap-2 text-purple-300">
+                                <i class="fas fa-chart-line"></i> ANN Results
+                                <span id="annStatusBadge" class="hidden ml-2 text-xs px-2 py-0.5 rounded-full bg-purple-500/20 text-purple-300">ready</span>
+                            </h3>
+                            <div id="annScoresContent">
+                                <div class="flex flex-col items-center justify-center py-12 text-gray-500">
+                                    <i class="fas fa-network-wired text-5xl mb-4 opacity-30"></i>
+                                    <p class="text-sm">Configure architecture and train to see results</p>
+                                    <p class="text-xs text-gray-600 mt-1">Tip: Use <strong>preset architectures</strong> below for quick setup</p>
+                                </div>
+                            </div>
+                        </div>
+                        
+                        <!-- Charts Grid -->
+                        <div id="annCharts"></div>
+                        
+                        <!-- Training Stats Summary (shown after training) -->
+                        <div id="annTrainingSummary" class="hidden"></div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- ===== TAB: CLUSTERING ===== -->
+            <div id="tab-clustering" class="tab-content">
+                <div class="flex justify-between items-center mb-6">
+                    <h2 class="text-2xl font-bold">Clustering Analysis</h2>
+                    <button onclick="runClustering()" class="btn-primary px-6 py-2 rounded-lg font-semibold">
+                        <i class="fas fa-project-diagram mr-2"></i> Run Clustering
+                    </button>
+                </div>
+                <div id="clusteringContent">
+                    <div class="text-center text-gray-400 py-20">
+                        <i class="fas fa-object-group text-5xl mb-4"></i>
+                        <p>Run clustering to discover natural groups in your data</p>
+                    </div>
+                </div>
+            </div>
+
+            <!-- ===== TAB: CHAT ===== -->
+            <div id="tab-chat" class="tab-content">
+                <div class="max-w-4xl mx-auto h-[calc(100vh-200px)] flex flex-col">
+                    <div class="flex justify-between items-center mb-4">
+                        <h2 class="text-2xl font-bold">Multi-Agent Chat</h2>
+                        <div class="flex items-center gap-3">
+                            <label class="flex items-center space-x-2">
+                                <input type="checkbox" id="webSearchToggle" class="form-checkbox rounded bg-white/10 border-white/20">
+                                <span class="text-sm text-gray-400">Web Search</span>
+                            </label>
+                        </div>
+                    </div>
+                    <div id="chatContainer" class="flex-1 glass-card p-4 overflow-y-auto mb-4" style="max-height: 60vh;">
+                        <div class="chat-message chat-agent">
+                            <p class="font-semibold mb-1">🎛 Orchestrator</p>
+                            <p>Welcome to Dr. Data! I'm the Orchestrator agent. Upload a dataset and I'll dispatch the right specialists — Data Analyst, ML Engineer, Deep Learning, Visualizer, and Predictor — to solve your problem.</p>
+                        </div>
+                    </div>
+                    <div class="flex gap-2">
+                        <input type="text" id="chatInput" placeholder="Ask anything about your data..." 
+                               class="flex-1 bg-white/10 border border-white/20 rounded-lg px-4 py-3 text-white placeholder-gray-500"
+                               onkeypress="if(event.key==='Enter') sendChatMessage()">
+                        <button onclick="sendChatMessage()" class="btn-primary px-6 py-3 rounded-lg">
+                            <i class="fas fa-paper-plane"></i>
+                        </button>
+                    </div>
+                </div>
+            </div>
+        </main>
+    </div>
+
+    <script>
+        let currentSession = null;
+        const API_BASE = window.location.origin;
+
+        // -------- TAB SWITCHING --------
+        function switchTab(tabName) {
+            document.querySelectorAll('.tab-content').forEach(t => t.classList.remove('active'));
+            document.querySelectorAll('.sidebar-item').forEach(s => s.classList.remove('active'));
+            document.getElementById('tab-' + tabName).classList.add('active');
+            const sidebarItem = event && event.target ? event.target.closest('.sidebar-item') : null;
+            if (sidebarItem) sidebarItem.classList.add('active');
+        }
+
+        // -------- LOADING --------
+        function showLoading(text) {
+            document.getElementById('loadingText').textContent = text;
+            document.getElementById('loadingOverlay').style.display = 'flex';
+        }
+        function hideLoading() {
+            document.getElementById('loadingOverlay').style.display = 'none';
+        }
+
+        // -------- UPLOAD --------
+        document.getElementById('dropZone').addEventListener('click', () => {
+            document.getElementById('fileInput').click();
+        });
+        document.getElementById('dropZone').addEventListener('dragover', (e) => {
+            e.preventDefault();
+            e.currentTarget.classList.add('dragover');
+        });
+        document.getElementById('dropZone').addEventListener('dragleave', (e) => {
+            e.currentTarget.classList.remove('dragover');
+        });
+        document.getElementById('dropZone').addEventListener('drop', (e) => {
+            e.preventDefault();
+            e.currentTarget.classList.remove('dragover');
+            if (e.dataTransfer.files.length > 0) uploadFile(e.dataTransfer.files[0]);
+        });
+
+        function handleFileSelect(e) {
+            if (e.target.files[0]) uploadFile(e.target.files[0]);
+        }
+
+        async function uploadFile(file) {
+            showLoading('Uploading dataset...');
+            const formData = new FormData();
+            formData.append('file', file);
+            try {
+                const response = await fetch(API_BASE + '/upload', { method: 'POST', body: formData });
+                const data = await response.json();
+                if (data.success) {
+                    currentSession = data.session_id;
+                    displayUploadSuccess(data);
+                    updateColumnSelectors(data.metadata.columns);
+                    showOverview(data);
+                    switchTab('overview');
+                    document.getElementById('nav-overview').click();
+                } else {
+                    alert('Error: ' + data.message);
+                }
+            } catch (error) {
+                alert('Connection error: ' + error.message);
+            }
+            hideLoading();
+        }
+
+        function displayUploadSuccess(data) {
+            document.getElementById('uploadStatus').classList.remove('hidden');
+            document.getElementById('fileName').textContent = data.filename;
+            const meta = data.metadata;
+            const metrics = [
+                { icon: '📊', value: meta.shape[0], label: 'Rows' },
+                { icon: '📋', value: meta.shape[1], label: 'Columns' },
+                { icon: '💾', value: meta.memory_usage_mb + ' MB', label: 'Size' },
+                { icon: '🏥', value: meta.health_score + '/100', label: 'Health' }
+            ];
+            document.getElementById('fileMetrics').innerHTML = metrics.map(m => 
+                '<div class="metric-card"><div class="text-2xl">' + m.icon + '</div><div class="metric-value">' + m.value + '</div><div class="metric-label">' + m.label + '</div></div>'
+            ).join('');
+        }
+
+        function updateColumnSelectors(columns) {
+            ['targetColumn', 'annTargetColumn'].forEach(id => {
+                const sel = document.getElementById(id);
+                sel.innerHTML = '<option value="">Select...</option>' + columns.map(c => '<option value="' + c + '">' + c + '</option>').join('');
+            });
+        }
+
+        // -------- OVERVIEW --------
+        function showOverview(data) {
+            const meta = data.metadata;
+            const healthColor = meta.health_score >= 80 ? 'health-good' : meta.health_score >= 50 ? 'health-moderate' : 'health-poor';
+            document.getElementById('overviewContent').innerHTML = 
+                '<div class="grid grid-cols-4 gap-4 mb-6">' +
+                '<div class="metric-card"><div class="metric-value">' + meta.shape[0] + '</div><div class="metric-label">Rows</div></div>' +
+                '<div class="metric-card"><div class="metric-value">' + meta.shape[1] + '</div><div class="metric-label">Columns</div></div>' +
+                '<div class="metric-card"><div class="metric-value">' + meta.numeric_columns.length + '</div><div class="metric-label">Numeric</div></div>' +
+                '<div class="metric-card"><div class="metric-value">' + meta.categorical_columns.length + '</div><div class="metric-label">Categorical</div></div>' +
+                '</div>' +
+                '<div class="glass-card p-6 mb-6"><h3 class="font-bold mb-4">Data Health Score</h3>' +
+                '<div class="progress-bar mb-2"><div class="progress-fill ' + healthColor + '" style="width:' + meta.health_score + '%"></div></div>' +
+                '<div class="flex justify-between text-sm"><span class="text-gray-400">' + meta.health_score + '/100</span>' +
+                '<span class="' + (meta.health_score >= 80 ? 'text-green-400' : meta.health_score >= 50 ? 'text-yellow-400' : 'text-red-400') + '">' +
+                (meta.health_score >= 80 ? 'Excellent' : meta.health_score >= 50 ? 'Moderate' : 'Needs Attention') + '</span></div></div>' +
+                '<div class="glass-card p-6 mb-6"><h3 class="font-bold mb-4">Column Information</h3>' +
+                '<div class="overflow-x-auto"><table class="w-full text-sm"><thead><tr class="border-b border-white/10">' +
+                '<th class="text-left py-2 px-3">Column</th><th class="text-left py-2 px-3">Type</th><th class="text-left py-2 px-3">Missing</th><th class="text-left py-2 px-3">Summary</th></tr></thead><tbody>' +
+                meta.columns.map(col => {
+                    const ns = meta.numeric_summary[col];
+                    return '<tr class="border-b border-white/5 hover:bg-white/5"><td class="py-2 px-3">' + col + '</td>' +
+                    '<td class="py-2 px-3 text-gray-400">' + meta.dtypes[col] + '</td>' +
+                    '<td class="py-2 px-3 ' + (meta.missing_values[col] > 0 ? 'text-yellow-400' : 'text-green-400') + '">' +
+                    meta.missing_values[col] + ' (' + meta.missing_percentage[col] + '%)</td>' +
+                    '<td class="py-2 px-3 text-gray-400">' + (ns ? 'min:' + (ns.min ? ns.min.toFixed(2) : 'N/A') + ' max:' + (ns.max ? ns.max.toFixed(2) : 'N/A') : 'N/A') + '</td></tr>';
+                }).join('') + '</tbody></table></div></div>' +
+                (meta.health_issues.length > 0 ? '<div class="glass-card p-6"><h3 class="font-bold mb-4">Detected Issues</h3>' +
+                meta.health_issues.map(i => '<div class="insight-item">' + i + '</div>').join('') + '</div>' : '');
+        }
+
+        // -------- EDA --------
+        async function runEDA() {
+            if (!currentSession) { alert('Please upload a dataset first'); return; }
+            showLoading('Running exploratory data analysis...');
+            try {
+                const response = await fetch(API_BASE + '/analysis/eda', {
+                    method: 'POST', headers: {'Content-Type':'application/json'},
+                    body: JSON.stringify({session_id: currentSession, analysis_type: 'eda'})
+                });
+                const data = await response.json();
+                if (data.success) displayEDA(data);
+            } catch (error) { alert('Error: ' + error.message); }
+            hideLoading();
+        }
+
+        function displayEDA(data) {
+            document.getElementById('edaContent').innerHTML = 
+                '<div class="mb-6"><div class="glass-card p-4 mb-4"><h3 class="font-bold mb-2">Key Insights</h3>' +
+                data.insights.map(i => '<div class="insight-item">' + i + '</div>').join('') + '</div>' +
+                '<div class="grid grid-cols-2 gap-4">' +
+                data.charts.map(chart => '<div class="chart-container"><h4 class="font-bold mb-2 text-gray-800">' + chart.title + '</h4>' +
+                '<img src="data:image/png;base64,' + chart.image + '" class="w-full rounded" alt="' + chart.title + '"></div>').join('') +
+                '</div></div>';
+        }
+
+        // -------- PREPROCESS --------
+        async function runPreprocess() {
+            if (!currentSession) { alert('Please upload a dataset first'); return; }
+            showLoading('Preprocessing data...');
+            try {
+                const response = await fetch(API_BASE + '/analysis/preprocess', {
+                    method: 'POST', headers: {'Content-Type':'application/json'},
+                    body: JSON.stringify({
+                        session_id: currentSession,
+                        handle_missing: document.getElementById('missingStrategy').value,
+                        handle_outliers: document.getElementById('outlierStrategy').value,
+                        encode_categorical: document.getElementById('encodingStrategy').value,
+                        scale_numeric: document.getElementById('scaleStrategy').value
+                    })
+                });
+                const data = await response.json();
+                if (data.success) {
+                    document.getElementById('preprocessResult').innerHTML = 
+                        '<h3 class="font-bold mb-4 text-green-400">Preprocessing Complete</h3>' +
+                        '<p class="mb-2">Shape: ' + data.report.before_shape + ' → ' + data.shape.after + '</p>' +
+                        '<div class="space-y-2 mt-4"><h4 class="font-semibold">Steps Performed:</h4>' +
+                        data.report.steps.map(s => '<div class="insight-item">' + s + '</div>').join('') + '</div>' +
+                        '<div class="mt-4"><h4 class="font-semibold mb-2">Preview:</h4>' +
+                        '<div class="overflow-x-auto"><table class="w-full text-sm"><thead><tr class="border-b border-white/10">' +
+                        Object.keys(data.preview[0]).map(k => '<th class="text-left py-1 px-2">' + k + '</th>').join('') +
+                        '</tr></thead><tbody>' + data.preview.map(row => '<tr class="border-b border-white/5">' +
+                        Object.values(row).map(v => '<td class="py-1 px-2 text-gray-400">' + (typeof v === 'number' ? v.toFixed(4) : v) + '</td>').join('') +
+                        '</tr>').join('') + '</tbody></table></div></div>';
+                }
+            } catch (error) { alert('Error: ' + error.message); }
+            hideLoading();
+        }
+
+        // -------- MODEL CHIP SELECTION --------
+        function selectModelChip(el) {
+            document.querySelectorAll('.model-chip').forEach(c => c.classList.remove('active'));
+            el.classList.add('active');
+        }
+
+        function getSelectedModelType() {
+            const active = document.querySelector('.model-chip.active');
+            return active ? active.getAttribute('data-value') : 'all';
+        }
+
+        // -------- HYPERPARAMETER SECTION TOGGLE --------
+        function toggleHPSection(header) {
+            const body = header.nextElementSibling;
+            const icon = header.querySelector('.fa-chevron-down, .fa-chevron-right');
+            if (body.style.display === 'none') {
+                body.style.display = 'block';
+                if (icon) icon.className = 'fas fa-chevron-down text-xs text-gray-500';
+            } else {
+                body.style.display = 'none';
+                if (icon) icon.className = 'fas fa-chevron-right text-xs text-gray-500';
+            }
+        }
+
+        // Initialize all HP sections as collapsed
+        document.addEventListener('DOMContentLoaded', () => {
+            document.querySelectorAll('.hp-section-body').forEach(body => {
+                body.style.display = 'none';
+            });
+        });
+
+        // -------- COLLECT HYPERPARAMETERS --------
+        function getMLHyperparameters() {
+            return {
+                n_estimators: parseInt(document.getElementById('hp_n_estimators').value) || 200,
+                max_depth: parseInt(document.getElementById('hp_max_depth').value) || 20,
+                min_samples_split: parseInt(document.getElementById('hp_min_samples_split').value) || 2,
+                min_samples_leaf: parseInt(document.getElementById('hp_min_samples_leaf').value) || 1,
+                svm_kernel: document.getElementById('hp_svm_kernel').value,
+                svm_c: parseFloat(document.getElementById('hp_svm_c').value) || 1.0,
+                svm_gamma: document.getElementById('hp_svm_gamma').value,
+                knn_neighbors: parseInt(document.getElementById('hp_knn_neighbors').value) || 5,
+                knn_weights: document.getElementById('hp_knn_weights').value,
+                knn_metric: document.getElementById('hp_knn_metric').value,
+                ridge_alpha: parseFloat(document.getElementById('hp_ridge_alpha').value) || 1.0,
+                lasso_alpha: parseFloat(document.getElementById('hp_lasso_alpha').value) || 0.1,
+                logistic_penalty: document.getElementById('hp_logistic_penalty').value,
+                logistic_c: parseFloat(document.getElementById('hp_logistic_c').value) || 1.0,
+                logistic_solver: 'lbfgs',
+                xgb_learning_rate: parseFloat(document.getElementById('hp_xgb_lr').value) || 0.1,
+                xgb_max_depth: parseInt(document.getElementById('hp_xgb_max_depth').value) || 6,
+                xgb_subsample: parseFloat(document.getElementById('hp_xgb_subsample').value) || 0.8,
+                xgb_colsample_bytree: parseFloat(document.getElementById('hp_xgb_colsample').value) || 0.8,
+                lgb_num_leaves: parseInt(document.getElementById('hp_lgb_num_leaves').value) || 31,
+                lgb_learning_rate: parseFloat(document.getElementById('hp_lgb_lr').value) || 0.1,
+                lgb_feature_fraction: parseFloat(document.getElementById('hp_lgb_feature_fraction').value) || 0.9
+            };
+        }
+
+        // -------- TRAIN ML MODELS --------
+        async function trainMLModel() {
+            if (!currentSession) { alert('Please upload a dataset first'); return; }
+            const target = document.getElementById('targetColumn').value;
+            if (!target) { alert('Please select a target column'); return; }
+            showLoading('Training machine learning models...');
+            try {
+                const payload = {
+                    session_id: currentSession, target_column: target,
+                    model_type: getSelectedModelType(),
+                    test_size: parseFloat(document.getElementById('testSize').value),
+                    problem_type: document.getElementById('problemType').value,
+                    cv_folds: parseInt(document.getElementById('cvFolds').value),
+                    analysis_type: 'model',
+                    ml_hyperparameters: getMLHyperparameters()
+                };
+                
+                const response = await fetch(API_BASE + '/analysis/model', {
+                    method: 'POST', headers: {'Content-Type':'application/json'},
+                    body: JSON.stringify(payload)
+                });
+                
+                const rawText = await response.text();
+                let data = null;
+                try { data = rawText ? JSON.parse(rawText) : null; } catch (_) { data = null; }
+
+                if (response.ok && data && data.success) {
+                    let scoresHtml = '<h3 class="font-bold mb-3">Model Results</h3>' +
+                        '<div class="bg-green-400/10 border border-green-400/30 rounded-lg p-3 mb-4 flex items-center gap-3">' +
+                        '<i class="fas fa-trophy text-yellow-400 text-xl"></i>' +
+                        '<div><span class="font-semibold text-green-400">Best Model: ' + data.best_model + '</span>' +
+                        '<span class="ml-2 text-sm text-gray-400">(' + data.problem_type + ')</span></div></div>' +
+                        '<div class="space-y-3" style="max-height: 600px; overflow-y: auto;">';
+                    
+                    for (const [model, scores] of Object.entries(data.model_scores)) {
+                        const isBest = model === data.best_model;
+                        scoresHtml += '<div class="' + (isBest ? 'bg-purple-400/10 border border-purple-400/30' : 'bg-white/5') + ' rounded-lg p-3">' +
+                            '<div class="flex items-center justify-between"><p class="font-semibold">' + model + 
+                            (isBest ? ' <span class="badge-pill bg-yellow-400 text-yellow-900">BEST</span>' : '') + '</p>' +
+                            '<span class="text-xs text-gray-500">' + (data.cv_results && data.cv_results[model] && data.cv_results[model].mean ? 'CV: ' + data.cv_results[model].mean.toFixed(4) : '') + '</span></div>' +
+                            '<div class="grid grid-cols-3 gap-2 mt-2 text-sm">' +
+                            Object.entries(scores).map(([k,v]) => '<div><span class="text-gray-400">' + k + ':</span> <span class="text-green-400 font-mono">' + v + '</span></div>').join('') +
+                            '</div></div>';
+                    }
+                    scoresHtml += '</div>';
+                    document.getElementById('mlScores').innerHTML = scoresHtml;
+                    document.getElementById('mlCharts').innerHTML = '<div class="grid grid-cols-2 gap-4">' +
+                    data.charts.map(chart => '<div class="chart-container"><h4 class="font-bold mb-2 text-gray-800">' + chart.title + '</h4>' +
+                    '<img src="data:image/png;base64,' + chart.image + '" class="w-full rounded" alt="' + chart.title + '"></div>').join('') + '</div>';
+                } else {
+                    const msg = (data && (data.message || data.error || data.detail)) ? (data.message || data.error || data.detail) : rawText;
+                    // Show error in the results panel instead of alert
+                    document.getElementById('mlScores').innerHTML = 
+                        '<h3 class="font-bold mb-3 text-red-400 flex items-center gap-2"><i class="fas fa-exclamation-triangle"></i> Training Error</h3>' +
+                        '<div class="bg-red-400/10 border border-red-400/30 rounded-lg p-3"><pre class="text-sm text-red-300 whitespace-pre-wrap">' + (msg || 'Unknown error') + '</pre></div>';
+                }
+            } catch (error) { 
+                document.getElementById('mlScores').innerHTML = 
+                    '<h3 class="font-bold mb-3 text-red-400">Connection Error</h3>' +
+                    '<div class="bg-red-400/10 border border-red-400/30 rounded-lg p-3 text-sm text-red-300">' + error.message + '</div>';
+            }
+            hideLoading();
+        }
+
+        // -------- ANN TRAINING --------
+        function getANNConfig() {
+            const cfg = {
+                auto_architecture: false,
+                hidden_layers: [],
+                dropout_rates: [],
+                activation: document.querySelector('#annConfigContainer select[id^="activation_0"]') ? 'relu' : 'relu',
+                optimizer: document.getElementById('annOptimizer').value || 'adamw',
+                learning_rate: parseFloat(document.getElementById('annLearningRate').value) || 0.001,
+                weight_decay: 0.004,
+                epochs: parseInt(document.getElementById('annEpochs').value) || 100,
+                batch_size: parseInt(document.getElementById('annBatchSize').value) || 32,
+                use_batch_normalization: document.getElementById('annBatchNorm').checked,
+                l2_regularization: parseFloat(document.getElementById('annL2Reg').value) || 0.001,
+                early_stopping_patience: parseInt(document.getElementById('annEarlyStopPatience').value) || 20
+            };
+            // Use global annConfig if loaded
+            if (window.annConfig && window.annConfig.layers && window.annConfig.layers.length > 0) {
+                cfg.hidden_layers = window.annConfig.layers.map(l => l.neurons);
+                cfg.dropout_rates = window.annConfig.layers.map(l => l.dropout);
+                cfg.activation = window.annConfig.layers[0].activation || 'relu';
+            } else {
+                cfg.auto_architecture = true;
+            }
+            return cfg;
+        }
+
+        async function trainANN() {
+            if (!currentSession) { alert('Please upload a dataset first'); return; }
+            const target = document.getElementById('annTargetColumn').value;
+            if (!target) { alert('Please select a target column'); return; }
+            showLoading('Training neural network... This may take a few minutes');
+            try {
+                const payload = {
+                    session_id: currentSession, target_column: target,
+                    test_size: parseFloat(document.getElementById('annTestSize').value),
+                    problem_type: document.getElementById('annProblemType').value,
+                    analysis_type: 'ann',
+                    ann_config: getANNConfig()
+                };
+                
+                const response = await fetch(API_BASE + '/analysis/ann', {
+                    method: 'POST', headers: {'Content-Type':'application/json'},
+                    body: JSON.stringify(payload)
+                });
+                const data = await response.json();
+                if (data.success) {
+                    const arch = data.architecture;
+                    document.getElementById('annScoresContent').innerHTML = 
+                        '<div class="grid grid-cols-2 gap-4 mb-4">' +
+                        '<div class="bg-white/5 rounded-lg p-3"><p class="text-gray-400 text-sm">Architecture</p>' +
+                        '<p class="font-mono text-sm text-indigo-300">' + arch.input_dim + ' → ' + (arch.hidden_layers || []).join(' → ') + ' → ' + arch.output_units + '</p></div>' +
+                        '<div class="bg-white/5 rounded-lg p-3"><p class="text-gray-400 text-sm">Epochs Trained</p><p class="font-mono text-green-400">' + (arch.epochs_trained || 'N/A') + '</p></div>' +
+                        '</div>' +
+                        '<div class="grid grid-cols-3 gap-3 mb-4">' +
+                        Object.entries(data.scores).map(([k,v]) => 
+                            '<div class="rounded-lg p-3 text-center" style="background: rgba(99,102,241,0.08); border: 1px solid rgba(99,102,241,0.2);">' +
+                            '<p class="text-xs text-gray-500 uppercase tracking-wider">' + k + '</p>' +
+                            '<p class="text-lg font-bold text-green-400 font-mono mt-1">' + v + '</p></div>'
+                        ).join('') +
+                        '</div>' +
+                        '<div class="space-y-2">' + (data.insights || []).map(i => '<div class="insight-item">' + i + '</div>').join('') + '</div>';
+                    document.getElementById('annCharts').innerHTML = 
+                        '<div class="grid grid-cols-1 lg:grid-cols-2 gap-4">' +
+                        (data.charts || []).map((chart, ci) => 
+                            '<div class="chart-container hover:shadow-lg transition-shadow duration-200"><h4 class="font-bold mb-2 text-gray-800 text-sm">' + 
+                            '<i class="fas fa-chart-' + (ci % 2 === 0 ? 'line' : 'bar') + ' mr-1 text-indigo-500"></i> ' + 
+                            chart.title + '</h4>' +
+                            '<img src="data:image/png;base64,' + chart.image + '" class="w-full rounded" alt="' + chart.title + '" style="border: 1px solid #e5e7eb;"></div>'
+                        ).join('') + '</div>';
+                    // Show status badge
+                    const badge = document.getElementById('annStatusBadge');
+                    if (badge) { badge.classList.remove('hidden'); badge.textContent = '✓ trained'; }
+                } else {
+                    document.getElementById('annScoresContent').innerHTML = 
+                        '<div class="flex flex-col items-center justify-center py-8 text-red-400">' +
+                        '<i class="fas fa-exclamation-triangle text-4xl mb-3"></i>' +
+                        '<p class="text-sm">Training Error</p>' +
+                        '<pre class="text-xs text-red-300 mt-2 bg-red-400/10 p-3 rounded-lg">' + (data.detail || data.message || 'Unknown error') + '</pre></div>';
+                }
+            } catch (error) { 
+                document.getElementById('annScoresContent').innerHTML = 
+                    '<div class="flex flex-col items-center justify-center py-8 text-red-400">' +
+                    '<i class="fas fa-plug text-4xl mb-3"></i>' +
+                    '<p class="text-sm">Connection Error: ' + error.message + '</p></div>';
+            }
+            hideLoading();
+        }
+
+        // -------- CLUSTERING --------
+        async function runClustering() {
+            if (!currentSession) { alert('Please upload a dataset first'); return; }
+            showLoading('Running clustering analysis...');
+            try {
+                const response = await fetch(API_BASE + '/analysis/clustering', {
+                    method: 'POST', headers: {'Content-Type':'application/json'},
+                    body: JSON.stringify({session_id: currentSession, analysis_type: 'clustering'})
+                });
+                const data = await response.json();
+                if (data.success) {
+                    document.getElementById('clusteringContent').innerHTML = 
+                        '<div class="glass-card p-6 mb-6"><h3 class="font-bold mb-4 text-purple-400">Clustering Results</h3>' +
+                        '<div class="grid grid-cols-3 gap-4 mb-4">' +
+                        '<div class="metric-card"><div class="metric-value">' + data.optimal_k + '</div><div class="metric-label">Optimal K</div></div>' +
+                        '<div class="metric-card"><div class="metric-value">' + data.silhouette_score + '</div><div class="metric-label">Silhouette</div></div>' +
+                        '<div class="metric-card"><div class="metric-value">' + data.calinski_harabasz + '</div><div class="metric-label">Calinski-Harabasz</div></div>' +
+                        '</div>' +
+                        '<div class="space-y-2"><h4 class="font-semibold">Insights:</h4>' + data.insights.map(i => '<div class="insight-item">' + i + '</div>').join('') + '</div></div>' +
+                        '<div class="grid grid-cols-2 gap-4">' +
+                        data.charts.map(chart => '<div class="chart-container"><h4 class="font-bold mb-2 text-gray-800">' + chart.title + '</h4>' +
+                        '<img src="data:image/png;base64,' + chart.image + '" class="w-full rounded" alt="' + chart.title + '"></div>').join('') + '</div>';
+                }
+            } catch (error) { alert('Error: ' + error.message); }
+            hideLoading();
+        }
+
+        // -------- CHAT --------
+        async function sendChatMessage() {
+            const input = document.getElementById('chatInput');
+            const message = input.value.trim();
+            if (!message) return;
+            if (!currentSession) { alert('Please upload a dataset first'); return; }
+            addChatMessage(message, 'user');
+            input.value = '';
+            const typingId = 'typing-' + Date.now();
+            const chatContainer = document.getElementById('chatContainer');
+            chatContainer.innerHTML += '<div id="' + typingId + '" class="chat-message chat-agent"><p class="font-semibold mb-1">🎛 Orchestrator</p>' +
+            '<div class="typing-indicator"><span></span><span></span><span></span></div></div>';
+            chatContainer.scrollTop = chatContainer.scrollHeight;
+            try {
+                // Get model path from sidebar
+                const modelPath = document.getElementById('modelPathInput').value.trim();
+                
+                const response = await fetch(API_BASE + '/chat', {
+                    method: 'POST', headers: {'Content-Type':'application/json'},
+                    body: JSON.stringify({
+                        session_id: currentSession, 
+                        message: message, 
+                        search_web: document.getElementById('webSearchToggle').checked,
+                        agent_mode: true,
+                        llm_provider: modelPath ? "llamacpp" : "llamacpp",
+                        gguf_model_path: modelPath || undefined
+                    })
+                });
+                const rawText = await response.text();
+                let data = null;
+                try { data = rawText ? JSON.parse(rawText) : null; } catch (_) { data = null; }
+
+                document.getElementById(typingId).remove();
+
+                if (!response.ok) {
+                    const msg = (data && (data.detail || data.error || data.message)) ? (data.detail || data.error || data.message) : rawText;
+                    addChatMessage(msg || 'Sorry, an error occurred.', 'agent');
+                    return;
+                }
+
+                let agentBadges = '';
+                if (data && data.active_agents) {
+                    agentBadges = '<div class="flex flex-wrap gap-2 mb-2">' + 
+                        data.active_agents.map(a => '<span class="agent-badge">' + a + '</span>').join('') + 
+                        '</div>';
+                }
+                addChatMessage((data && data.response ? data.response : rawText).replace(/\n/g, '<br>'), 'agent');
+            } catch (error) {
+                document.getElementById(typingId).remove();
+                addChatMessage('Sorry, an error occurred. Please try again.', 'agent');
+            }
+        }
+
+        function addChatMessage(text, sender) {
+            const container = document.getElementById('chatContainer');
+            const div = document.createElement('div');
+            div.className = 'chat-message chat-' + sender;
+            div.innerHTML = sender === 'agent' ? 
+                '<p class="font-semibold mb-1">🎛 Orchestrator</p><div class="text-sm">' + text + '</div>' :
+                '<p class="font-semibold mb-1">You</p><div class="text-sm">' + text + '</div>';
+            container.appendChild(div);
+            container.scrollTop = container.scrollHeight;
+        }
+    </script>
+    <script src="/static/ann_config.js"></script>
+    <script src="/static/theme.js"></script>
+</body>
+</html>
